@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, Download, FileJson, Check, Copy, FileText, AlertCircle, Edit3, Save, ChevronRight, Share2, Plus } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import { extractTextFromPDF, convertToStructuredJson } from '@/lib/PDFProcessor';
+import { ExtractedData } from '@/lib/PDFProcessor';
 
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
@@ -26,8 +26,20 @@ export default function Home() {
       setError(null);
       setFileName(file.name);
 
-      const rawData = await extractTextFromPDF(file);
-      const structuredJson = convertToStructuredJson(rawData);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to extract text from the PDF.');
+      }
+
+      const structuredJson: ExtractedData = await response.json();
       const jsonString = JSON.stringify(structuredJson, null, 2);
 
       setJsonOutput(jsonString);
