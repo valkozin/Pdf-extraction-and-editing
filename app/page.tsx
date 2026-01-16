@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, Download, FileJson, Check, Copy, FileText, AlertCircle, Edit3, Save } from 'lucide-react';
+import Editor from '@monaco-editor/react';
 import { extractTextFromPDF, convertToStructuredJson } from '@/lib/PDFProcessor';
 
 export default function Home() {
@@ -70,7 +71,21 @@ export default function Home() {
   };
 
   const downloadJson = () => {
-    const blob = new Blob([jsonOutput], { type: 'application/json' });
+    // If editing, try to use the current edit value, otherwise use valid jsonOutput
+    let contentToDownload = jsonOutput;
+
+    if (isEditing) {
+      try {
+        // Validate before downloading
+        JSON.parse(editValue);
+        contentToDownload = editValue;
+      } catch (e) {
+        setError('Cannot download: Invalid JSON in editor.');
+        return;
+      }
+    }
+
+    const blob = new Blob([contentToDownload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -192,12 +207,25 @@ export default function Home() {
             <div className="glass-card overflow-hidden">
               {isEditing ? (
                 <div className="flex flex-col">
-                  <textarea
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    className="w-full h-[600px] p-6 bg-transparent text-sky-100 font-mono text-sm focus:outline-none resize-none"
-                    spellCheck={false}
-                  />
+                  <div className="border border-glass-border rounded-t-lg overflow-hidden">
+                    <Editor
+                      height="600px"
+                      defaultLanguage="json"
+                      value={editValue}
+                      theme="vs-dark"
+                      onChange={(value) => setEditValue(value || '')}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        scrollBeyondLastLine: false,
+                        wordWrap: 'on',
+                        formatOnPaste: true,
+                        automaticLayout: true,
+                        padding: { top: 16, bottom: 16 },
+                      }}
+                      className="rounded-t-lg"
+                    />
+                  </div>
                   <div className="p-4 border-t border-glass-border flex justify-end gap-2 bg-glass-highlight">
                     <button onClick={() => { setIsEditing(false); setEditValue(jsonOutput); }} className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white">
                       Cancel
